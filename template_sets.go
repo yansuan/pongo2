@@ -13,19 +13,22 @@ import (
 // among all members of the set), their own configuration (like a specific base directory) and their own sandbox.
 // It's useful for a separation of different kind of templates (e. g. web templates vs. mail templates).
 type TemplateSet struct {
-	name string
+	name                 string
 
 	// Globals will be provided to all templates created within this template set
-	Globals Context
+	Globals              Context
 
 	// If debug is true (default false), ExecutionContext.Logf() will work and output to STDOUT. Furthermore,
 	// FromCache() won't cache the templates. Make sure to synchronize the access to it in case you're changing this
 	// variable during program execution (and template compilation/execution).
-	Debug bool
+	Debug                bool
+
+	//html aes encrypt key
+	HtmlEncryptKey       []byte
 
 	// Base directory: If you set the base directory (string is non-empty), all filename lookups in tags/filters are
 	// relative to this directory. If it's empty, all lookups are relative to the current filename which is importing.
-	baseDirectory string
+	baseDirectory        string
 
 	// Sandbox features
 	// - Limit access to directories (using SandboxDirectories)
@@ -49,8 +52,8 @@ type TemplateSet struct {
 	bannedFilters        map[string]bool
 
 	// Template cache (for FromCache())
-	templateCache      map[string]*Template
-	templateCacheMutex sync.Mutex
+	templateCache        map[string]*Template
+	templateCacheMutex   sync.Mutex
 }
 
 // Create your own template sets to separate different kind of templates (e. g. web from mail templates) with
@@ -183,8 +186,23 @@ func (set *TemplateSet) FromFile(filename string) (*Template, error) {
 			ErrorMsg: err.Error(),
 		}
 	}
+
+	//生产模式,需要解密运行
+	if !set.Debug {
+		aes := NewAes()
+		buf, err = aes.Decrypt(buf, set.HtmlEncryptKey)
+		if err != nil {
+			return nil, &Error{
+				Filename: filename,
+				Sender:   "fromfile",
+				ErrorMsg: err.Error(),
+			}
+		}
+	}
+
 	return newTemplate(set, filename, false, string(buf))
 }
+
 
 // Shortcut; renders a template string directly. Panics when providing a
 // malformed template or an error occurs during execution.
@@ -278,18 +296,18 @@ func logf(format string, items ...interface{}) {
 }
 
 var (
-	debug  bool // internal debugging
+	debug bool // internal debugging
 	logger = log.New(os.Stdout, "[pongo2] ", log.LstdFlags)
 
 	// Creating a default set
 	DefaultSet = NewSet("default")
 
 	// Methods on the default set
-	FromString           = DefaultSet.FromString
-	FromFile             = DefaultSet.FromFile
-	FromCache            = DefaultSet.FromCache
+	FromString = DefaultSet.FromString
+	FromFile = DefaultSet.FromFile
+	FromCache = DefaultSet.FromCache
 	RenderTemplateString = DefaultSet.RenderTemplateString
-	RenderTemplateFile   = DefaultSet.RenderTemplateFile
+	RenderTemplateFile = DefaultSet.RenderTemplateFile
 
 	// Globals for the default set
 	Globals = DefaultSet.Globals
