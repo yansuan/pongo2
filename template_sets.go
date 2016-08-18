@@ -188,7 +188,7 @@ func (set *TemplateSet) FromFile(filename string) (*Template, error) {
 	}
 
 	//生产模式,需要解密运行
-	if !set.Debug {
+	if set.HtmlEncryptKey != nil && !set.Debug {
 		aes := NewAes()
 		buf, err = aes.Decrypt(buf, set.HtmlEncryptKey)
 		if err != nil {
