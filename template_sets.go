@@ -183,10 +183,16 @@ func (set *TemplateSet) FromFile(filename string) (*Template, error) {
 	set.firstTemplateCreated = true
 	var buf []byte
 	var err error
-	if set.AssetFS != nil {
+	if set.AssetFS != nil && set.Debug == false {
 		buf,err = set.AssetFS.Asset(filename)
+		if err != nil {
+			buf, err = ioutil.ReadFile(set.resolveFilename(nil, filename))
+		}
 	} else {
 		buf, err = ioutil.ReadFile(set.resolveFilename(nil, filename))
+		if err != nil {
+			buf,err = set.AssetFS.Asset(filename)
+		}
 	}
 	if err != nil {
 		return nil, &Error{
