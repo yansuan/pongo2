@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"github.com/elazarl/go-bindata-assetfs"
 )
 
 // A template set allows you to create your own group of templates with their own global context (which is shared
@@ -24,7 +25,10 @@ type TemplateSet struct {
 	Debug                bool
 
 	//html aes encrypt key
-	HtmlEncryptKey       []byte
+	//HtmlEncryptKey       []byte
+
+	//assetFS
+	AssetFS *assetfs.AssetFS
 
 	// Base directory: If you set the base directory (string is non-empty), all filename lookups in tags/filters are
 	// relative to this directory. If it's empty, all lookups are relative to the current filename which is importing.
@@ -177,8 +181,13 @@ func (set *TemplateSet) FromString(tpl string) (*Template, error) {
 // if given.
 func (set *TemplateSet) FromFile(filename string) (*Template, error) {
 	set.firstTemplateCreated = true
-
-	buf, err := ioutil.ReadFile(set.resolveFilename(nil, filename))
+	var buf []byte
+	var err error
+	if set.AssetFS != nil {
+		buf,err = set.AssetFS.Asset(filename)
+	} else {
+		buf, err = ioutil.ReadFile(set.resolveFilename(nil, filename))
+	}
 	if err != nil {
 		return nil, &Error{
 			Filename: filename,
@@ -187,18 +196,18 @@ func (set *TemplateSet) FromFile(filename string) (*Template, error) {
 		}
 	}
 
-	//生产模式,需要解密运行
-	if set.HtmlEncryptKey != nil && !set.Debug {
-		aes := NewAes()
-		buf, err = aes.Decrypt(buf, set.HtmlEncryptKey)
-		if err != nil {
-			return nil, &Error{
-				Filename: filename,
-				Sender:   "fromfile",
-				ErrorMsg: err.Error(),
-			}
-		}
-	}
+	////生产模式,需要解密运行
+	//if set.HtmlEncryptKey != nil && !set.Debug {
+	//	aes := NewAes()
+	//	buf, err = aes.Decrypt(buf, set.HtmlEncryptKey)
+	//	if err != nil {
+	//		return nil, &Error{
+	//			Filename: filename,
+	//			Sender:   "fromfile",
+	//			ErrorMsg: err.Error(),
+	//		}
+	//	}
+	//}
 
 	return newTemplate(set, filename, false, string(buf))
 }
